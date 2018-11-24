@@ -6,7 +6,7 @@ import time
 
 # Specify the model and dataloader
 from data_loader import Loader
-from vgg16_puma_test import Model
+from vgg16_puma import Model
 import puma_models as puma
 
 # add flags for user defined parameters
@@ -18,9 +18,9 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('optimizer', 'adam', 'spcify the optimizer to use - adam/vanilla/momentum/nestrov')
 flags.DEFINE_integer('epochs', 100, 'Number of epochs to run the training')
 flags.DEFINE_integer('chpk_freq', 10, 'How often models are checkpointed during training')
-flags.DEFINE_integer('batch_size', 32, 'batch size used in training')
+flags.DEFINE_integer('batch_size', 64, 'batch size used in training')
 flags.DEFINE_float('lr', 0.0001, 'Initial learning rate')
-flags.DEFINE_string('log_dir', 'puma_vgg_test', 'checkpoint directory where model and logs will be saved')
+flags.DEFINE_string('logdir', 'puma_vgg16', 'checkpoint directory where model and logs will be saved')
 flags.DEFINE_boolean('restore', False, 'whether to restore training from checkpoint and log directory')
 flags.DEFINE_integer('quant_bits', 8, 'number of bits for weight/activation quantization')
 flags.DEFINE_integer('quant_delay', 101, 'when to start quantization during training')
@@ -31,6 +31,7 @@ flags.DEFINE_float('puma_alpha', 0.0, 'nonideality-write-nonlinearity-alpha')
 
 # flag to set carry resolution frequency
 flags.DEFINE_integer('crs_freq', 1, 'How often carry resolution occurs during training - epoch granularity')
+flags.DEFINE_integer('slice_bits', 2, 'number of bits per outer-product slice')
 
 
 # API for taining a dnn model
@@ -55,7 +56,7 @@ def train():
     # If not using puma-outerproduct; directly use nonideality class without going through outer_product class
     # outer_product is built on example-wise gradients and is slow [To Try for speedup - see Goodfeli blog - https://github.com/tensorflow/tensorflow/issues/4897]
     #nonideality = puma.nonideality(sigma=FLAGS.puma_sigma, alpha=FLAGS.puma_alpha)
-    puma_op = puma.outer_product(var_list=var_list, sigma=FLAGS.puma_sigma, alpha=FLAGS.puma_alpha)
+    puma_op = puma.outer_product(var_list=var_list, sigma=FLAGS.puma_sigma, alpha=FLAGS.puma_alpha, slice_bits=FLAGS.slice_bits)
 
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 
@@ -81,11 +82,16 @@ def train():
     accuracy = tf.reduce_mean(tf.cast(equality, tf.float32))
     puma_sat_stats  = grad_n[1]
 
+    # create ops for top-5 accuracy
+    equality5 = tf.nn.in_top_k(outputs, labels, 5)
+    accuracy5 = tf.reduce_mean(tf.cast(equality5, tf.float32))
+
     # puma crs_sync
     crs_op = puma_op.crs_sync(var_list)
 
     tf.summary.scalar("Loss", loss)
-    tf.summary.scalar("Training accuracy", accuracy)
+    tf.summary.scalar("Training accuracy - Top-1", accuracy)
+    tf.summary.scalar("Training accuracy - Top-5", accuracy5)
     tf.summary.scalar("PUMA Parallel Write Saturation", puma_sat_stats)
 
     # set a saver for checkpointing
@@ -95,15 +101,15 @@ def train():
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True,log_device_placement=False)) as sess:
         try:
             # setup logfile for this training session
-            train_writer = tf.summary.FileWriter(logdir="./"+FLAGS.log_dir, graph=sess.graph)
+            train_writer = tf.summary.FileWriter(logdir="./"+FLAGS.logdir, graph=sess.graph)
 
             # setup counter, summary writes and model based on if restore required
             # keep track of progress during training with counter - for correct restoring from last checkpoint
             if FLAGS.restore:
-                assert (tf.gfile.Exists(FLAGS.log_dir)), 'Restore requires log file from previous run, set restore to False and run...'
-                print ('restoring train from: %s' % FLAGS.log_dir)
-                saver.restore(sess, tf.train.latest_checkpoint("./"+FLAGS.log_dir))
-                ckpt_name = tf.train.get_checkpoint_state(FLAGS.log_dir).model_checkpoint_path # extract the latest checkpoint
+                assert (tf.gfile.Exists(FLAGS.logdir)), 'Restore requires log file from previous run, set restore to False and run...'
+                print ('restoring train from: %s' % FLAGS.logdir)
+                saver.restore(sess, tf.train.latest_checkpoint("./"+FLAGS.logdir))
+                ckpt_name = tf.train.get_checkpoint_state(FLAGS.logdir).model_checkpoint_path # extract the latest checkpoint
                 counter = int(ckpt_name.split('-')[1]) # extract the counter from checkpoint
             else:
                 counter = 0
@@ -115,27 +121,28 @@ def train():
 
             # train network for user-defined epochs
             num_batch_per_epoch_train = math.ceil(loader.num_training_examples / FLAGS.batch_size)
+            print (num_batch_per_epoch_train)
 
             while (counter < FLAGS.epochs*num_batch_per_epoch_train):
-            #while (counter < 1):
                 counter += 1
 
                 # puma carry resolution step
-                start_time = time.time()
+                #start_time = time.time()
                 if (counter%(FLAGS.crs_freq*num_batch_per_epoch_train) == 0):
+                    print("Performing puma crs.....")
                     sess.run(crs_op)
-                duration = time.time() - start_time
-                print("crs time: %0.4f" % duration)
+                #duration = time.time() - start_time
+                #print("crs time: %0.4f" % duration)
 
                 # a batch of training
                 start_time = time.time()
-                print ("added runmeta")
-                run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-                run_metadata = tf.RunMetadata()
-                _, _, summary = sess.run([grad_n, train_op, merge],feed_dict={}, options=run_options, run_metadata=run_metadata)
+                #run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE) #Uncomment these to get run-time compute/memory utilization
+                #run_metadata = tf.RunMetadata()
+                #_, _, summary = sess.run([grad_n, train_op, merge],feed_dict={}, options=run_options, run_metadata=run_metadata)
+                _, _, summary = sess.run([grad_n, train_op, merge],feed_dict={})
                 duration = time.time() - start_time
-                print("training time (per batch): %0.4f" % duration)
-                train_writer.add_run_metadata(run_metadata, 'step%d' % counter)
+                print("Step: %d \t Training time (1 batch): %0.4f" % (counter, duration))
+                #train_writer.add_run_metadata(run_metadata, 'step%d' % counter)
                 train_writer.add_summary(summary, global_step=counter)
 
                 # compute validation accuracy every epoch
@@ -144,28 +151,32 @@ def train():
 
                     val_counter = 0
                     true_count = 0
+                    true_count5 = 0
 
                     while (val_counter < num_batch_per_epoch_val):
                         val_counter += 1
                         # a batch of validation
                         val_x,val_y = sess.run(val_iterator)
-                        val_equality = sess.run([equality],feed_dict={model.x_placeholder:val_x,model.y_placeholder:val_y,model.training:False})
+                        val_equality, val_equality5 = sess.run([equality, equality5],feed_dict={model.x_placeholder:val_x,model.y_placeholder:val_y,model.training:False})
                         true_count += np.sum(val_equality)
+                        true_count5 += np.sum(val_equality5)
 
                     val_accuracy = true_count / (FLAGS.batch_size * num_batch_per_epoch_val)
+                    val_accuracy5 = true_count5 / (FLAGS.batch_size * num_batch_per_epoch_val)
                     accuracy_summary = tf.Summary()
-                    accuracy_summary.value.add(tag='Validation Accuracy',simple_value=val_accuracy)
+                    accuracy_summary.value.add(tag='Validation Accuracy - Top-1',simple_value=val_accuracy)
+                    accuracy_summary.value.add(tag='Validation Accuracy - Top-5',simple_value=val_accuracy5)
                     train_writer.add_summary(accuracy_summary, global_step=counter)
-                    print ('Validation accuracy %.4f' % val_accuracy)
+                    print ('Validation accuracy: Top-1 %.4f \t Top-5 %.4f' % (val_accuracy, val_accuracy5))
 
                 if (counter%(FLAGS.chpk_freq*num_batch_per_epoch_train) == 0):
                     # Save model
                     print("Periodically saving model...")
-                    save_path = saver.save(sess, "./" + FLAGS.log_dir + "/model.ckpt")
+                    save_path = saver.save(sess, "./" + FLAGS.logdir + "/model.ckpt")
 
         except KeyboardInterrupt:
             print("Interupted... saving model.")
-            save_path = saver.save(sess, "./" + FLAGS.log_dir + "/model.ckpt-" + str(counter))
+            save_path = saver.save(sess, "./" + FLAGS.logdir + "/model.ckpt-" + str(counter))
 
 
 def main(argv=None):

@@ -1,4 +1,6 @@
 #### APIs to model different non-idealities in PUMA forward/backward pass
+# tf.cast and tf.stack take up too much memory
+
 import tensorflow as tf
 import numpy as np
 
@@ -187,26 +189,28 @@ def _slice (data, num_slice, step_size, min_val, precision):
     with tf.name_scope(None, "slice_op"):
         if (min_val != None): # for matrix
             data_fixed = tf.cast(tf.round((data - min_val) / step_size), dtype=tf.int32) # fixed_point repr. (unsigned)
-        else: # for grad (grad represents change, hence represented with same step size as matrix)
+        else:
+            # for grad (grad represents change, hence represented with same step size as matrix)
             # clip the gradeints to contain within precision (NOTE: this isimportant, as step_size is set by weights and not grad)
             data_fixed_tmp = tf.cast(tf.round(data / step_size), dtype=tf.int32) # fixed_point repr. (can be signed)
             data_fixed = tf.clip_by_value(data_fixed_tmp, 0, tf.pow(2, precision)-1)
 
         # list of slices starting from least significant slice
-        data_sliced = [tf.bitwise.right_shift(data_fixed,2*i)-(tf.bitwise.right_shift(data_fixed, 2*(i+1))*4) for i in range(num_slice)]
+        data_sliced = tf.stack([tf.bitwise.right_shift(data_fixed,2*i)-(tf.bitwise.right_shift(data_fixed, 2*(i+1))*4) for i in range(num_slice)])
+        #data_sliced_temp = tf.stack([tf.bitwise.right_shift(data_fixed,2*i) for i in range(num_slice+1)])
+        #data_sliced = tf.stack([(data_sliced_temp[i]-data_sliced_temp[i+1]*4) for i in range(num_slice)])
         return data_sliced
 
 
 ### convert from sliced form to float
 def _unslice (data_sliced, num_slice, step_size, min_val): #data_sliced should be list of slices
     with tf.name_scope(None, "unslice_op"):
-        data_val_list = [tf.bitwise.left_shift(data_sliced[i],2*i) for i in range(len(data_sliced))]
-        data_val_tensor = tf.cast(tf.stack(data_val_list), tf.float32)
+        data_val_tensor = tf.stack([data_sliced[i]*tf.pow(2,2*i) for i in range(num_slice)])
 
         if (min_val != None): # for matrix
-            data_float = min_val + step_size * tf.reduce_sum(data_val_tensor, axis=0)
+            data_float = min_val + step_size * tf.cast(tf.reduce_sum(data_val_tensor, axis=0), dtype=tf.float32)
         else:
-            data_float = step_size * tf.reduce_sum(data_val_tensor, axis=0)
+            data_float = step_size * tf.cast(tf.reduce_sum(data_val_tensor, axis=0), dtype=tf.float32)
         return data_float
 
 
@@ -215,14 +219,14 @@ class sliced_data ():
     # default state - each slice has 2-bits of value, 4-bits of carry
     # matrix in specifies the shape of sliced storage (self.data_sliced)
     def __init__ (self, matrix_in, name, precision=16, num_slice=8, slice_bits=6):
-        with tf.device("/device:GPU:0"):
-            with tf.variable_scope(None, "Sliced_Data"):
-                # state refers to min_val, max_val, step_size
-                self.state = tf.get_variable ("State_"+name, [3], trainable=False, dtype=tf.float32)
+        #with tf.device("/device:GPU:0"):
+        with tf.variable_scope(None, "Sliced_Data"):
+            # state refers to min_val, max_val, step_size
+            self.state = tf.get_variable ("State_"+name, [3], trainable=False, dtype=tf.float32)
 
-                data_shape = matrix_in.get_shape()
-                sliced_data_shape = [num_slice] + [data_shape[i].value for i in range(len(data_shape))]
-                self.data_sliced = tf.get_variable("Sliced_"+name, sliced_data_shape, trainable=False, dtype=tf.int32)
+            data_shape = matrix_in.get_shape()
+            sliced_data_shape = [num_slice] + [data_shape[i].value for i in range(len(data_shape))]
+            self.data_sliced = tf.get_variable("Sliced_"+name, sliced_data_shape, trainable=False, dtype=tf.int32)
 
     # write data - initialize at crs-sync points
     def write_data (self, matrix_in, precision, num_slice):
@@ -240,7 +244,7 @@ class sliced_data ():
 
             # update sliced storage after crs-sync
             data_sliced_tmp = _slice(matrix_in, num_slice, curr_state[2], curr_state[0], None)
-            data_sliced_updated = self.data_sliced.assign(tf.stack(data_sliced_tmp))
+            data_sliced_updated = self.data_sliced.assign(data_sliced_tmp)
             return data_sliced_updated # returns a write op for assigning sliced_data
 
     # update data_sliced with grad computed during back-prop and return data_loss factor for grad
@@ -248,39 +252,40 @@ class sliced_data ():
     # data_loss per slice increases with increasing (grad_slice+data_slice-slice_max)
     def update_data (self, grad_in, precision, num_slice, slice_min, slice_max):
         with tf.name_scope(None, "update_slice"):
-            grad_sliced_tmp = _slice(tf.abs(grad_in), num_slice, self.state[2], None, precision)
-            grad_sliced = tf.stack(grad_sliced_tmp) # this is a tensor
+            grad_sliced = _slice(tf.abs(grad_in), num_slice, self.state[2], None, precision)
 
-            unit_sign_map = 1*tf.cast(grad_in >= 0, tf.int32) + -1*tf.cast(grad_in < 0, tf.int32) # grad_sliced has signed-magnitude repr.
-            sign_map = tf.stack([unit_sign_map for i in range(grad_sliced.get_shape()[0])]) # all slices have same signs
-            data_updated = grad_sliced*sign_map + self.data_sliced # this is tensor
+            sign_map = 1*tf.cast(grad_in >= 0, tf.int32) + -1*tf.cast(grad_in < 0, tf.int32) # grad_sliced has signed-magnitude repr. (sign_map is per slice, all slices have same sign)
+            data_updated = grad_sliced*sign_map + self.data_sliced # this is tensor (sign_map will get broadcast across all slices)
 
-            # compute loss_factor per slice
-            # positive grads
-            loss_factor_pos = (data_updated - slice_max)
-            loss_factor_pos = loss_factor_pos * tf.cast((loss_factor_pos >= 0), tf.int32) # cast to zero for non-saturating updates
-            loss_factor_pos = loss_factor_pos * tf.cast((sign_map > 0), tf.int32) # cast to zero for non-positive grads
-            # negative grads
-            loss_factor_neg = (data_updated - slice_min)
-            loss_factor_neg = loss_factor_neg * tf.cast((loss_factor_neg <= 0), tf.int32) # cast to zero for non-saturating updates
-            loss_factor_neg = loss_factor_neg * tf.cast((sign_map <= 0), tf.int32) # cast to zero for non-negative grads
+            ## compute loss_factor per slice
+            ## positive grads
+            #loss_factor_pos = (data_updated - slice_max)
+            #loss_factor_pos = loss_factor_pos * tf.cast((loss_factor_pos >= 0), tf.int32) # cast to zero for non-saturating updates
+            #loss_factor_pos = loss_factor_pos * tf.cast((sign_map > 0), tf.int32) # cast to zero for non-positive grads
+            ## negative grads
+            #loss_factor_neg = (data_updated - slice_min)
+            #loss_factor_neg = loss_factor_neg * tf.cast((loss_factor_neg <= 0), tf.int32) # cast to zero for non-saturating updates
+            #loss_factor_neg = loss_factor_neg * tf.cast((sign_map <= 0), tf.int32) # cast to zero for non-negative grads
 
-            # compute overall loss (positive and negative grads) and return updated grad
-            loss_factor = loss_factor_pos + loss_factor_neg
-            grad_updated_sliced = [grad_sliced[i] * sign_map[i] - loss_factor[i] for i  in range(grad_sliced.get_shape()[0])]
-            grad_updated = _unslice(grad_updated_sliced, num_slice, self.state[2], None)
+            ## compute overall loss (positive and negative grads) and return updated grad
+            #loss_factor = loss_factor_pos + loss_factor_neg
+            #grad_updated_sliced = grad_sliced * sign_map - loss_factor
+            #grad_updated = _unslice(grad_updated_sliced, num_slice, self.state[2], None)
 
-            # clip based on slice_bits
+            # clip based on slice_bits - update data_sliced and return grad_updated
             data_updated_clipped = tf.clip_by_value(data_updated, slice_min, slice_max)
-
+            grad_updated_sliced = data_updated_clipped - self.data_sliced
+            grad_updated = _unslice(grad_updated_sliced, num_slice, self.state[2], None)
             data_sliced_updated = self.data_sliced.assign(data_updated_clipped)
+
+            # compute grad_updated
+
             return [data_sliced_updated, grad_updated]
 
     # for DEBUG - reconstruct the data from sliced_data
     def read_data (self, num_slice):
         with tf.name_scope(None, "read_slice"):
-            data_sliced_list = [self.data_sliced[i] for i in range(self.data_sliced.get_shape()[0])]
-            data_out = _unslice(data_sliced_list, num_slice, self.state[2], self.state[0])
+            data_out = _unslice(self.data_sliced, num_slice, self.state[2], self.state[0])
             return data_out
 
 
@@ -389,8 +394,8 @@ class outer_product ():
 def _get_saturation_stats_var (var_sliced, slice_max, slice_min):
     with tf.name_scope(None, "puma_stats_var"):
         # find number of values at slice_min and slice_max
-        sat_identifier_tensor = tf.cast(tf.logical_or(tf.equal(var_sliced, slice_max), tf.equal(var_sliced, slice_min)), dtype=tf.float32)
-        return tf.reduce_mean(sat_identifier_tensor)
+        sat_identifier_tensor = tf.cast(tf.logical_or(tf.equal(var_sliced, slice_max), tf.equal(var_sliced, slice_min)), dtype=tf.uint8)
+        return tf.count_nonzero(input_tensor=sat_identifier_tensor, dtype=tf.float16)/tf.size(input=sat_identifier_tensor, out_type=tf.float16)
 
 
 ## NOTE: this function is required to make sure var_sliced_out propagates somewhere [else tensorflow deson't update daat_sliced]
