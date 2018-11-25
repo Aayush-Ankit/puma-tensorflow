@@ -61,6 +61,7 @@ class nonideality ():
         # name_scope groups vars and ops  within a scope for easy visualization in tensorboard
         with tf.name_scope(name, "puma_non_ideality"):
             grads_nonideal = []
+            weight_range = []
             for pair in grads: # grads represents (gradient, weight)
                 gradient_ideal = pair[0]
                 weights = pair[1]
@@ -73,6 +74,19 @@ class nonideality ():
                 # pack grad, weights
                 pair_nonideal = (gradient_nonideal, weights)
                 grads_nonideal.append (pair_nonideal)
+
+            # compute summary (difference in ideal and non-ideal normalized with weight_range)
+            grad_ideal_list = [grad for grad, var in grads]
+            grad_nonideal_list = [grad for grad, var in grads_nonideal]
+            grad_diff = [((tf.abs(grad_ideal_list[i]-grad_nonideal_list[i]))/weight_range[i]) for i in range(len(weight_range))]
+            grad_diff_mean = tf.stack([tf.reduce_mean(grad_diff_tensor) for grad_diff_tensor in grad_diff])
+            tf.summary.scalar("grad_diff_mean",tf.reduce_mean(grad_diff_mean))
+
+            # log summary of weight_range and grad_ideal(normalized with weight_range)
+            tf.summary.scalar("weight_range_mean",tf.reduce_mean(tf.stack(weight_range)))
+            grad_norm = [(tf.abs(grad_ideal_list[i])/weight_range[i]) for i in range(len(weight_range))]
+            grad_norm_mean = tf.stack([tf.reduce_mean(grad_norm_tensor) for grad_norm_tensor in grad_norm])
+            tf.summary.scalar("grad_ideal_norm_mean",tf.reduce_mean(grad_norm_mean))
 
             return grads_nonideal
 
@@ -395,15 +409,22 @@ def _get_saturation_stats_var (var_sliced, slice_max, slice_min):
     with tf.name_scope(None, "puma_stats_var"):
         # find number of values at slice_min and slice_max
         sat_identifier_tensor = tf.cast(tf.logical_or(tf.equal(var_sliced, slice_max), tf.equal(var_sliced, slice_min)), dtype=tf.uint8)
-        return tf.count_nonzero(input_tensor=sat_identifier_tensor, dtype=tf.float16)/tf.size(input=sat_identifier_tensor, out_type=tf.float16)
+        #return tf.count_nonzero(input_tensor=sat_identifier_tensor, dtype=tf.float16)/tf.size(input=sat_identifier_tensor, out_type=tf.float16)
+        # return slice-wise stats
+        return tf.stack([tf.count_nonzero(input_tensor=sat_identifier_tensor[i], dtype=tf.float16)/tf.size(input=sat_identifier_tensor[i], out_type=tf.float16) \
+                for i in range(var_sliced.get_shape()[0])])
 
 
 ## NOTE: this function is required to make sure var_sliced_out propagates somewhere [else tensorflow deson't update daat_sliced]
 ## get saturation stats for slices
 def _get_saturation_stats_list (var_sliced_list, slice_max, slice_min):
     with tf.name_scope(None, "puma_stats_list"):
-        sat_identifier_list = [_get_saturation_stats_var(var, slice_max, slice_min) for var in var_sliced_list]
-        return tf.reduce_mean(tf.stack(sat_identifier_list))
+        sat_identifier_tensor = tf.stack([_get_saturation_stats_var(var, slice_max, slice_min) for var in var_sliced_list])
+        #return tf.reduce_mean(tf.stack(sat_identifier_list))
+        mean_per_slice = tf.reduce_mean(input_tensor=sat_identifier_tensor, axis=0)
+        global_mean = tf.reduce_mean(mean_per_slice)
+        return [mean_per_slice, global_mean]
+
 
 # ************************* Recycle-bin *****************************
 # quantization appraoch with while-loop

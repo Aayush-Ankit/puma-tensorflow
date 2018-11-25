@@ -37,6 +37,8 @@ flags.DEFINE_integer('slice_bits', 2, 'number of bits per outer-product slice')
 # API for taining a dnn model
 def train():
 
+    print ("PUMA slice bits: ", FLAGS.slice_bits)
+
     # dataloader for validation accuracy computation  -dataloader for training data is embedded in model
     loader = Loader(FLAGS.batch_size)
     val_iterator = loader.get_dataset(train=False).get_next()
@@ -92,7 +94,11 @@ def train():
     tf.summary.scalar("Loss", loss)
     tf.summary.scalar("Training accuracy - Top-1", accuracy)
     tf.summary.scalar("Training accuracy - Top-5", accuracy5)
-    tf.summary.scalar("PUMA Parallel Write Saturation", puma_sat_stats)
+
+    # capture slice-wise saturation statistics
+    tf.summary.scalar("PUMA Parallel Write Saturation", puma_sat_stats[1])
+    for i in range(puma_sat_stats[0].get_shape()[0]):
+        tf.summary.scalar("PUMA Parallel Write Saturation-"+"Slice "+str(i), puma_sat_stats[0][i])
 
     # set a saver for checkpointing
     saver = tf.train.Saver()

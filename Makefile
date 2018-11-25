@@ -18,13 +18,18 @@ clean-train:
 clean-eval:
 	rm -r cifar100_fixed_*_bits
 
-sim-puma-sigma:
-	CUDA_VISIBLE_DEVICES=0 python train_puma.py --puma_sigma=0.00 --puma_alpha=0.00 --log_dir=vgg16_puma_sigma_0.00_alpha_0.00
-	CUDA_VISIBLE_DEVICES=0 python train_puma.py --puma_sigma=0.01 --puma_alpha=0.01 --log_dir=vgg16_puma_sigma_0.01_alpha_0.01
-	CUDA_VISIBLE_DEVICES=0 python train_puma.py --puma_sigma=0.10 --puma_alpha=0.01 --log_dir=vgg16_puma_sigma_0.10_alpha_0.01
-	CUDA_VISIBLE_DEVICES=0 python train_puma.py --puma_sigma=0.50 --puma_alpha=0.01 --log_dir=vgg16_puma_sigma_0.50_alpha_0.01
+sim-new-nonideality1:
+	CUDA_VISIBLE_DEVICES=0 python train_puma_nonideality.py --puma_sigma=0.0 --puma_alpha=0.0 --logdir=puma_vgg16_sigma_0.0_alpha_0.0
+	CUDA_VISIBLE_DEVICES=0 python train_puma_nonideality.py --puma_sigma=0.00010 --puma_alpha=0.00001 --logdir=puma_vgg16_sigma_0.00010_alpha_0.00001
+	CUDA_VISIBLE_DEVICES=0 python train_puma_nonideality.py --puma_sigma=0.00001 --puma_alpha=0.00010 --logdir=puma_vgg16_sigma_0.00001_alpha_0.00010
+	CUDA_VISIBLE_DEVICES=0 python train_puma_nonideality.py --puma_sigma=0.00001 --puma_alpha=0.00001 --logdir=puma_vgg16_sigma_0.00001_alpha_0.00001
+	CUDA_VISIBLE_DEVICES=0 python train_puma_nonideality.py --puma_sigma=0.00010 --puma_alpha=0.00010 --logdir=puma_vgg16_sigma_0.00010_alpha_0.00010
+	CUDA_VISIBLE_DEVICES=0 python train_puma_nonideality.py --puma_sigma=0.1 --puma_alpha=0.1 --logdir=puma_vgg16_sigma_0.1_alpha_0.1
 
-sim-puma-alpha:
-	CUDA_VISIBLE_DEVICES=1 python train_puma.py --log_dir=vgg16_puma_sigma_0.01_alpha_0.01 --puma_sigma=0.01 --puma_alpha=0.01
-	CUDA_VISIBLE_DEVICES=1 python train_puma.py --log_dir=vgg16_puma_sigma_0.01_alpha_0.10 --puma_sigma=0.01 --puma_alpha=0.10
-	CUDA_VISIBLE_DEVICES=1 python train_puma.py --log_dir=vgg16_puma_sigma_0.01_alpha_0.50 --puma_sigma=0.01 --puma_alpha=0.50
+sim-new-nonideality2:
+	CUDA_VISIBLE_DEVICES=2 python train_puma_nonideality.py --puma_sigma=0.001 --puma_alpha=0.001 --logdir=puma_vgg16_sigma_0.001_alpha_0.001
+	CUDA_VISIBLE_DEVICES=2 python train_puma_nonideality.py --puma_sigma=0.001 --puma_alpha=0.010 --logdir=puma_vgg16_sigma_0.001_alpha_0.010
+	CUDA_VISIBLE_DEVICES=2 python train_puma_nonideality.py --puma_sigma=0.010 --puma_alpha=0.001 --logdir=puma_vgg16_sigma_0.010_alpha_0.001
+	CUDA_VISIBLE_DEVICES=2 python train_puma_nonideality.py --puma_sigma=0.01 --puma_alpha=0.01 --logdir=puma_vgg16_sigma_0.01_alpha_0.01
+	CUDA_VISIBLE_DEVICES=2 python train_puma_nonideality.py --puma_sigma=0.1 --puma_alpha=0.01 --logdir=puma_vgg16_sigma_0.1_alpha_0.01
+	CUDA_VISIBLE_DEVICES=2 python train_puma_nonideality.py --puma_sigma=0.01 --puma_alpha=0.1 --logdir=puma_vgg16_sigma_0.01_alpha_0.1

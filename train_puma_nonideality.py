@@ -20,14 +20,14 @@ flags.DEFINE_integer('epochs', 100, 'Number of epochs to run the training')
 flags.DEFINE_integer('chpk_freq', 10, 'How often models are checkpointed during training')
 flags.DEFINE_integer('batch_size', 64, 'batch size used in training')
 flags.DEFINE_float('lr', 0.0001, 'Initial learning rate')
-flags.DEFINE_string('logdir', 'puma_vgg16', 'checkpoint directory where model and logs will be saved')
+flags.DEFINE_string('logdir', 'puma_nonid_test', 'checkpoint directory where model and logs will be saved')
 flags.DEFINE_boolean('restore', False, 'whether to restore training from checkpoint and log directory')
 flags.DEFINE_integer('quant_bits', 8, 'number of bits for weight/activation quantization')
 flags.DEFINE_integer('quant_delay', 101, 'when to start quantization during training')
 
 # flags to set non-ideality bounds
-flags.DEFINE_float('puma_sigma', 0.0, 'nonideality-write-noise-sigma')
-flags.DEFINE_float('puma_alpha', 0.0, 'nonideality-write-nonlinearity-alpha')
+flags.DEFINE_float('puma_sigma', 0.00001, 'nonideality-write-noise-sigma')
+flags.DEFINE_float('puma_alpha', 0.00001, 'nonideality-write-nonlinearity-alpha')
 
 # flag to set carry resolution frequency
 flags.DEFINE_integer('crs_freq', 1, 'How often carry resolution occurs during training - epoch granularity')
@@ -124,7 +124,8 @@ def train():
             num_batch_per_epoch_train = math.ceil(loader.num_training_examples / FLAGS.batch_size)
             print (num_batch_per_epoch_train)
 
-            while (counter < FLAGS.epochs*num_batch_per_epoch_train):
+            #while (counter < FLAGS.epochs*num_batch_per_epoch_train):
+            while (counter < 1):
                 counter += 1
 
                 ## puma carry resolution step
@@ -141,7 +142,7 @@ def train():
                 #run_metadata = tf.RunMetadata()
                 #_, _, summary = sess.run([grad_n, train_op, merge],feed_dict={}, options=run_options, run_metadata=run_metadata)
                 #_, _, summary = sess.run([grad_n, train_op, merge],feed_dict={})
-                _, summary = sess.run([train_op, merge],feed_dict={})
+                _, _, summary = sess.run([softmax, train_op, merge],feed_dict={})
                 duration = time.time() - start_time
                 print("Step: %d \t Training time (1 batch): %0.4f" % (counter, duration))
                 #train_writer.add_run_metadata(run_metadata, 'step%d' % counter)
