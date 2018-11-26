@@ -24,6 +24,7 @@ flags.DEFINE_string('logdir', 'puma_nonid_test', 'checkpoint directory where mod
 flags.DEFINE_boolean('restore', False, 'whether to restore training from checkpoint and log directory')
 flags.DEFINE_integer('quant_bits', 8, 'number of bits for weight/activation quantization')
 flags.DEFINE_integer('quant_delay', 101, 'when to start quantization during training')
+flags.DEFINE_string('dataset', "/local/scratch/a/aankit/tensorflow/approx_memristor/cifar100/dataset/", 'what is the path to dataset')
 
 # flags to set non-ideality bounds
 flags.DEFINE_float('puma_sigma', 0.00001, 'nonideality-write-noise-sigma')
@@ -38,7 +39,7 @@ flags.DEFINE_integer('slice_bits', 2, 'number of bits per outer-product slice')
 def train():
 
     # dataloader for validation accuracy computation  -dataloader for training data is embedded in model
-    loader = Loader(FLAGS.batch_size)
+    loader = Loader(FLAGS.batch_size, FLAGS.dataset)
     val_iterator = loader.get_dataset(train=False).get_next()
 
     # load model

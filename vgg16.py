@@ -12,7 +12,7 @@ FLAGS = flags.FLAGS
 # Model definition of dnn
 class Model():
     def __init__(self, batch_size):
-        loader = Loader(batch_size)
+        loader = Loader(batch_size, FLAGS.dataset)
         iterator = loader.get_dataset()
 
         def build_model():

@@ -8,8 +8,10 @@ import matplotlib.pyplot as plt
 
 # Data loader to provide iterator object to the dataset
 class Loader():
-    def __init__(self,batch_size=64):
-        dataset_path = "/local/scratch/a/aankit/tensorflow/approx_memristor/cifar100/dataset/"
+    def __init__(self,batch_size=64, path=None):
+        assert (path != None), "Provide the path to dataset"
+        #dataset_path = "/local/scratch/a/aankit/tensorflow/approx_memristor/cifar100/dataset/"
+        dataset_path = path
         # Downloads the CIFAR 100 dataset and saves it as a TFRecords File if not available
         self.filenames = [dataset_path+"train.tfrecords",dataset_path+"test.tfrecords"]
         self.batch_size = batch_size
