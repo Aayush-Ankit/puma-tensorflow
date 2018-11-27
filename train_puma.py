@@ -31,7 +31,7 @@ flags.DEFINE_float('puma_sigma', 0.0, 'nonideality-write-noise-sigma')
 flags.DEFINE_float('puma_alpha', 0.0, 'nonideality-write-nonlinearity-alpha')
 
 # flag to set carry resolution frequency
-flags.DEFINE_integer('crs_freq', 1, 'How often carry resolution occurs during training - epoch granularity')
+flags.DEFINE_integer('crs_freq', 1, 'How often carry resolution occurs during training - batch granularity')
 flags.DEFINE_integer('slice_bits', 2, 'number of bits per outer-product slice')
 
 
@@ -130,15 +130,14 @@ def train():
             num_batch_per_epoch_train = math.ceil(loader.num_training_examples / FLAGS.batch_size)
             print (num_batch_per_epoch_train)
 
-            #while (counter < FLAGS.epochs*num_batch_per_epoch_train):
-            while (counter < 2):
+            while (counter < FLAGS.epochs*num_batch_per_epoch_train):
                 counter += 1
 
                 # puma carry resolution step
                 #start_time = time.time()
-                #if (counter%(FLAGS.crs_freq*num_batch_per_epoch_train) == 0):
-                print("Performing puma crs.....")
-                sess.run(crs_op)
+                if (counter % FLAGS.crs_freq == 0):
+                    print("Performing puma crs.....")
+                    sess.run(crs_op)
                 #duration = time.time() - start_time
                 #print("crs time: %0.4f" % duration)
 
