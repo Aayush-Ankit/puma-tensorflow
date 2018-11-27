@@ -5,3 +5,5 @@ Modelling PUMA computations in tensorflow
 
 #### How to run: CUDA_VISIBLE_DEVICES=<specify gpu> python train.py --dataset=<specify path> --logdir=<specify path>
 #### NOTE: Current version runs only on one GPU
+
+#### How to use: For GPU only simulations (no puma modelling) - use train.py; For puma simulations (slice, quantize, saturate and or non-ideality) - use train_puma.py
