@@ -31,11 +31,13 @@ class nonideality ():
         # name_scope groups vars and ops  within a scope for easy visualization in tensorboard
         with tf.name_scope(name, "comp_nonlin"):
             # compute delta
-            w_max = tf.reduce_max(weights)
+            w_max_temp = tf.reduce_max(weights)
             w_min = tf.reduce_min(weights)
+            w_max = tf.cond(tf.equal(w_min,w_max_temp), lambda: (w_min+1.0), lambda: (w_max_temp))
             weight_range = w_max-w_min
-            w0 = weight_range / (1.0 - tf.exp(-self.write_nonlinearlity_alpha))
             delta = grad_ideal / weight_range
+
+            w0 = weight_range / (1.0 - tf.exp(-self.write_nonlinearlity_alpha))
 
             # compute positive updates
             temp = (-self.write_nonlinearlity_alpha) * delta
@@ -53,7 +55,7 @@ class nonideality ():
 
             # merge positive and negative updates
             grad_nonideal = update_pos + update_neg
-            return grad_nonideal
+            return [grad_nonideal, weight_range]
 
     # input is a list of tuples (grad, var) as returned by tf.optimizer.compute_gradient()
     # returns updated grad (delta_W with non-ideality) - 1. non-linearity, 2. assymettry, 3. write noise
@@ -68,19 +70,20 @@ class nonideality ():
 
                 # apply non-ideality
                 gradient_nonideal1 = self._compute_nonlinearity (gradient_ideal, weights)
-                gradient_noise = self._compute_noise (gradient_nonideal1, weights)
+                gradient_noise = self._compute_noise (gradient_nonideal1[0], weights)
                 gradient_nonideal = gradient_ideal + gradient_noise
 
                 # pack grad, weights
                 pair_nonideal = (gradient_nonideal, weights)
                 grads_nonideal.append (pair_nonideal)
+                weight_range.append(gradient_nonideal1[1])
 
             # compute summary (difference in ideal and non-ideal normalized with weight_range)
             grad_ideal_list = [grad for grad, var in grads]
             grad_nonideal_list = [grad for grad, var in grads_nonideal]
             grad_diff = [((tf.abs(grad_ideal_list[i]-grad_nonideal_list[i]))/weight_range[i]) for i in range(len(weight_range))]
             grad_diff_mean = tf.stack([tf.reduce_mean(grad_diff_tensor) for grad_diff_tensor in grad_diff])
-            tf.summary.scalar("grad_diff_mean",tf.reduce_mean(grad_diff_mean))
+            tf.summary.scalar("grad_diff_mean",tf.reduce_mean(grad_diff_mean,name="grad_diff_mean"))
 
             # log summary of weight_range and grad_ideal(normalized with weight_range)
             tf.summary.scalar("weight_range_mean",tf.reduce_mean(tf.stack(weight_range)))
@@ -88,7 +91,7 @@ class nonideality ():
             grad_norm_mean = tf.stack([tf.reduce_mean(grad_norm_tensor) for grad_norm_tensor in grad_norm])
             tf.summary.scalar("grad_ideal_norm_mean",tf.reduce_mean(grad_norm_mean))
 
-            return grads_nonideal
+            return [grads_nonideal, grad_diff_mean]
 
 
 ### quantize an input tensor based on dynamic quantization
