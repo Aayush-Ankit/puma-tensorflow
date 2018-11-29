@@ -56,8 +56,8 @@ puma_train-crs256:
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_6bits_crsfreq_256 --slice_bits=6 --crs_freq=256
 
 puma_train-crs782:
-	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_3bits --slice_bits=3 --crs_freq=782
-	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_4bits --slice_bits=4 --crs_freq=782
-	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_5bits --slice_bits=5 --crs_freq=782
-	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_6bits --slice_bits=6 --crs_freq=782
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_3bits_crsfreq_782 --slice_bits=3 --crs_freq=782
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_4bits_crsfreq_782 --slice_bits=4 --crs_freq=782
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_5bits_crsfreq_782 --slice_bits=5 --crs_freq=782
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_6bits_crsfreq_782 --slice_bits=6 --crs_freq=782
 
