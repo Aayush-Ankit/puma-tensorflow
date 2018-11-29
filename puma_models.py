@@ -289,8 +289,14 @@ class sliced_data ():
             #grad_updated_sliced = grad_sliced * sign_map - loss_factor
             #grad_updated = _unslice(grad_updated_sliced, num_slice, self.state[2], None)
 
+            # reshape slice_min and slice_max for broadcasting
+            grad_shape = grad_in.get_shape()
+            shape_to_broadcast = [num_slice] + [1 for i in range(len(grad_shape))]
+            slice_min_tensor = tf.reshape(slice_min, shape_to_broadcast, "reshaped_slice_min")
+            slice_max_tensor = tf.reshape(slice_max, shape_to_broadcast, "reshaped_slice_max")
+
             # clip based on slice_bits - update data_sliced and return grad_updated
-            data_updated_clipped = tf.clip_by_value(data_updated, slice_min, slice_max)
+            data_updated_clipped = tf.clip_by_value(data_updated, slice_min_tensor, slice_max_tensor)
             grad_updated_sliced = data_updated_clipped - self.data_sliced
             grad_updated = _unslice(grad_updated_sliced, num_slice, self.state[2], None)
             data_sliced_updated = self.data_sliced.assign(data_updated_clipped)
@@ -308,11 +314,18 @@ class sliced_data ():
 
 ## PUMA outer-product storage (models device saturation errors, adds nonideality on quantized example-wise gradients)
 class outer_product ():
-    def __init__ (self, var_list, num_slice=8, precision=16, slice_bits=6, lr=0.01, sigma=0.01, alpha=0.01):
+    def __init__ (self, var_list, num_slice=8, precision=16, slice_bits=6, lr=0.01, sigma=0.01, alpha=0.01, ifmixed=False, slice_bits_list=[6]*8):
         with tf.variable_scope(None, "puma_sliced_data"):
             self.lr = lr
             self.num_slice = num_slice # number of slices used to store w/delta_w (depends on number of bits in mvm/vmm xbars)
-            self.slice_bits = slice_bits # number of slice bits in delta xbars
+
+            self.ifmixed = ifmixed # specify if mixed precision slices
+            if (ifmixed):
+                assert (len(slice_bits_list) == num_slice), "num_slice and slice_bits_list should be same"
+                self.slice_bits = tf.stack(slice_bits_list) # number of slice bits in delta xbars
+            else:
+                self.slice_bits = tf.stack([slice_bits for i in range(num_slice)])
+
             self.precision = precision
             self.slice_min = -1*tf.pow(2, self.slice_bits-1)
             self.slice_max = tf.pow(2, self.slice_bits-1)-1
@@ -335,8 +348,12 @@ class outer_product ():
     # update the slice with grad_in
     def update (self, grad_in):
         with tf.name_scope(None, "op_comp"):
-            grad_updated = [self.var_sliced_list[i].update_data(grad_in=grad_in[i], precision=self.precision, \
-                    num_slice=self.num_slice, slice_min=self.slice_min, slice_max=self.slice_max) for i in range(self.num_var)]
+            if (self.ifmixed):
+                grad_updated = [self.var_sliced_list[i].update_data(grad_in=grad_in[i], precision=self.precision, \
+                        num_slice=self.num_slice, slice_min=self.slice_min, slice_max=self.slice_max) for i in range(self.num_var)]
+            else:
+                grad_updated = [self.var_sliced_list[i].update_data(grad_in=grad_in[i], precision=self.precision, \
+                        num_slice=self.num_slice, slice_min=self.slice_min, slice_max=self.slice_max) for i in range(self.num_var)]
             return grad_updated #list of list of tensors
 
     # for DEBUG - read all slices
@@ -410,8 +427,14 @@ class outer_product ():
 
 def _get_saturation_stats_var (var_sliced, slice_max, slice_min):
     with tf.name_scope(None, "puma_stats_var"):
+        # reshape slice_min and slice_max tensors for brodcasting
+        var_shape = var_sliced.get_shape()
+        shape_to_broadcast =  [var_shape[0].value] + [1 for i in range(1,len(var_shape))]
+        slice_min_tensor = tf.reshape(slice_min, shape_to_broadcast)
+        slice_max_tensor = tf.reshape(slice_max, shape_to_broadcast)
+
         # find number of values at slice_min and slice_max
-        sat_identifier_tensor = tf.cast(tf.logical_or(tf.equal(var_sliced, slice_max), tf.equal(var_sliced, slice_min)), dtype=tf.uint8)
+        sat_identifier_tensor = tf.cast(tf.logical_or(tf.equal(var_sliced, slice_max_tensor), tf.equal(var_sliced, slice_min_tensor)), dtype=tf.uint8)
         #return tf.count_nonzero(input_tensor=sat_identifier_tensor, dtype=tf.float16)/tf.size(input=sat_identifier_tensor, out_type=tf.float16)
         # return slice-wise stats
         return tf.stack([tf.count_nonzero(input_tensor=sat_identifier_tensor[i], dtype=tf.float16)/tf.size(input=sat_identifier_tensor[i], out_type=tf.float16) \
