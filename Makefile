@@ -24,12 +24,30 @@ puma_train-crs1:
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_4bits --slice_bits=4 --crs_freq=1
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_5bits --slice_bits=5 --crs_freq=1
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_6bits --slice_bits=6 --crs_freq=1
+	
+puma_train-crs4:
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_3bits_crsfreq_4 --slice_bits=3 --crs_freq=4
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_4bits_crsfreq_4 --slice_bits=4 --crs_freq=4
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_5bits_crsfreq_4 --slice_bits=5 --crs_freq=4
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_6bits_crsfreq_4 --slice_bits=6 --crs_freq=4
 
 puma_train-crs16:
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_3bits_crsfreq_16 --slice_bits=3 --crs_freq=16
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_4bits_crsfreq_16 --slice_bits=4 --crs_freq=16
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_5bits_crsfreq_16 --slice_bits=5 --crs_freq=16
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_6bits_crsfreq_16 --slice_bits=6 --crs_freq=16
+	
+puma_train-crs32:
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_3bits_crsfreq_32 --slice_bits=3 --crs_freq=32
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_4bits_crsfreq_32 --slice_bits=4 --crs_freq=32
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_5bits_crsfreq_32 --slice_bits=5 --crs_freq=32
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_6bits_crsfreq_32 --slice_bits=6 --crs_freq=32
+	
+puma_train-crs64:
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_3bits_crsfreq_64 --slice_bits=3 --crs_freq=64
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_4bits_crsfreq_64 --slice_bits=4 --crs_freq=64
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_5bits_crsfreq_64 --slice_bits=5 --crs_freq=64
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_6bits_crsfreq_64 --slice_bits=6 --crs_freq=64
 
 puma_train-crs256:
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_3bits_crsfreq_256 --slice_bits=3 --crs_freq=256
@@ -38,10 +56,10 @@ puma_train-crs256:
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_6bits_crsfreq_256 --slice_bits=6 --crs_freq=256
 
 puma_train-crs782:
-	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_3bits --slice_bits=3 --crs_freq=782
-	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_4bits --slice_bits=4 --crs_freq=782
-	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_5bits --slice_bits=5 --crs_freq=782
-	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_6bits --slice_bits=6 --crs_freq=782
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_3bits_crsfreq_782 --slice_bits=3 --crs_freq=782
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_4bits_crsfreq_782 --slice_bits=4 --crs_freq=782
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_5bits_crsfreq_782 --slice_bits=5 --crs_freq=782
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_6bits_crsfreq_782 --slice_bits=6 --crs_freq=782
 
 puma_mixedprec-crs16:
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_mixed_66664444_crsfreq_16 --ifmixed=True --slice_bits_list=6,6,6,6,4,4,4,4 --crs_freq=16
