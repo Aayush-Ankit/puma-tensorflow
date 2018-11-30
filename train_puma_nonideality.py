@@ -14,6 +14,9 @@ from absl import flags
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
+# add debugger
+from tensorflow.python import debug as tf_debug
+
 # define command line parameters
 flags.DEFINE_string('optimizer', 'adam', 'spcify the optimizer to use - adam/vanilla/momentum/nestrov')
 flags.DEFINE_integer('epochs', 100, 'Number of epochs to run the training')
@@ -75,7 +78,7 @@ def train():
         grad_n = nonideality.apply(grad)
         #grad_n = puma_op.apply_batch(grad)
         #train_op = opt.apply_gradients(zip(grad_n[0], var_list)) # train with non-ideality and sliced_outer_product
-        train_op = opt.apply_gradients(grad_n) # train with non-ideality only
+        train_op = opt.apply_gradients(grad_n[0]) # train with non-ideality only
         #train_op = opt.apply_gradients(grad) # Ideal training
 
     # create ops for validation and training accuracy
@@ -99,8 +102,10 @@ def train():
     # set a saver for checkpointing
     saver = tf.train.Saver()
 
+    # wrap dession in debugger - IF DEBUG mode
     # run training within a session
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True,log_device_placement=False)) as sess:
+        #sess = tf_debug.LocalCLIDebugWrapperSession(sess)
         try:
             # setup logfile for this training session
             train_writer = tf.summary.FileWriter(logdir="./"+FLAGS.logdir, graph=sess.graph)
@@ -125,8 +130,7 @@ def train():
             num_batch_per_epoch_train = math.ceil(loader.num_training_examples / FLAGS.batch_size)
             print (num_batch_per_epoch_train)
 
-            #while (counter < FLAGS.epochs*num_batch_per_epoch_train):
-            while (counter < 1):
+            while (counter < FLAGS.epochs*num_batch_per_epoch_train):
                 counter += 1
 
                 ## puma carry resolution step
@@ -143,7 +147,7 @@ def train():
                 #run_metadata = tf.RunMetadata()
                 #_, _, summary = sess.run([grad_n, train_op, merge],feed_dict={}, options=run_options, run_metadata=run_metadata)
                 #_, _, summary = sess.run([grad_n, train_op, merge],feed_dict={})
-                _, _, summary = sess.run([softmax, train_op, merge],feed_dict={})
+                gtrad_diff, _, _, summary = sess.run([grad_n[1], softmax, train_op, merge],feed_dict={})
                 duration = time.time() - start_time
                 print("Step: %d \t Training time (1 batch): %0.4f" % (counter, duration))
                 #train_writer.add_run_metadata(run_metadata, 'step%d' % counter)

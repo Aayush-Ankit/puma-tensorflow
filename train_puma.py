@@ -14,6 +14,9 @@ from absl import flags
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
+# add debugger
+from tensorflow.python import debug as tf_debug
+
 # define command line parameters
 flags.DEFINE_string('optimizer', 'adam', 'spcify the optimizer to use - adam/vanilla/momentum/nestrov')
 flags.DEFINE_integer('epochs', 100, 'Number of epochs to run the training')
@@ -33,12 +36,19 @@ flags.DEFINE_float('puma_alpha', 0.0, 'nonideality-write-nonlinearity-alpha')
 # flag to set carry resolution frequency
 flags.DEFINE_integer('crs_freq', 1, 'How often carry resolution occurs during training - batch granularity')
 flags.DEFINE_integer('slice_bits', 2, 'number of bits per outer-product slice')
+flags.DEFINE_boolean('ifmixed', False, 'Chose whether to do mixed precision training or not')
+flags.DEFINE_list('slice_bits_list', [6,6,6,6,4,4,4,4] , 'Specify slice_bits as comma-sepearted values (starting from LSB to MSB slice)')
 
 
 # API for taining a dnn model
 def train():
 
-    print ("PUMA slice bits: ", FLAGS.slice_bits)
+    # print slice precision
+    if (FLAGS.ifmixed):
+        assert (len(FLAGS.slice_bits_list) == 8), "list length should be 8"
+        print ("PUMA sliced_bits_list", FLAGS.slice_bits_list)
+    else:
+        print ("PUMA slice bits: ", FLAGS.slice_bits)
 
     # dataloader for validation accuracy computation  -dataloader for training data is embedded in model
     loader = Loader(FLAGS.batch_size, FLAGS.dataset)
@@ -59,7 +69,8 @@ def train():
     # If not using puma-outerproduct; directly use nonideality class without going through outer_product class
     # outer_product is built on example-wise gradients and is slow [To Try for speedup - see Goodfeli blog - https://github.com/tensorflow/tensorflow/issues/4897]
     #nonideality = puma.nonideality(sigma=FLAGS.puma_sigma, alpha=FLAGS.puma_alpha)
-    puma_op = puma.outer_product(var_list=var_list, sigma=FLAGS.puma_sigma, alpha=FLAGS.puma_alpha, slice_bits=FLAGS.slice_bits)
+    puma_op = puma.outer_product(var_list=var_list, sigma=FLAGS.puma_sigma, alpha=FLAGS.puma_alpha, \
+            slice_bits=FLAGS.slice_bits, ifmixed=FLAGS.ifmixed, slice_bits_list=[int(x) for x in FLAGS.slice_bits_list])
 
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 
@@ -106,6 +117,7 @@ def train():
 
     # run training within a session
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True,log_device_placement=False)) as sess:
+        #sess = tf_debug.LocalCLIDebugWrapperSession(sess)
         try:
             # setup logfile for this training session
             train_writer = tf.summary.FileWriter(logdir="./"+FLAGS.logdir, graph=sess.graph)
