@@ -73,3 +73,14 @@ puma_mixedprec-crs4:
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_mixed_55664433_crsfreq_4 --ifmixed=True --slice_bits_list=5,5,6,6,4,4,3,3 --crs_freq=4
 	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_mixed_66663333_crsfreq_4 --ifmixed=True --slice_bits_list=6,6,6,6,3,3,3,3 --crs_freq=4
 
+puma_mixedprec-crs6:
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_mixed_66664444_crsfreq_6 --ifmixed=True --slice_bits_list=6,6,6,6,4,4,4,4 --crs_freq=6
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_mixed_55554444_crsfreq_6 --ifmixed=True --slice_bits_list=5,5,5,5,4,4,4,4 --crs_freq=6
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_mixed_55664433_crsfreq_6 --ifmixed=True --slice_bits_list=5,5,6,6,4,4,3,3 --crs_freq=6
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_mixed_66663333_crsfreq_6 --ifmixed=True --slice_bits_list=6,6,6,6,3,3,3,3 --crs_freq=6
+
+puma_mixedprec-crs8:
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_mixed_66664444_crsfreq_8 --ifmixed=True --slice_bits_list=6,6,6,6,4,4,4,4 --crs_freq=8
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_mixed_55554444_crsfreq_8 --ifmixed=True --slice_bits_list=5,5,5,5,4,4,4,4 --crs_freq=8
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_mixed_55664433_crsfreq_8 --ifmixed=True --slice_bits_list=5,5,6,6,4,4,3,3 --crs_freq=8
+	CUDA_VISIBLE_DEVICES=0 python train_puma.py --logdir=puma_vgg16_slice_mixed_66663333_crsfreq_8 --ifmixed=True --slice_bits_list=6,6,6,6,3,3,3,3 --crs_freq=8
