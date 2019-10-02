@@ -46,7 +46,7 @@ Tensorboard helps in visualization of several statistics collected during the tr
 
 ### Measuring runtime and memory consumption of operations in tensorboard
 
-Uncomment ```Lines 185-187 in train_puma.py``` - dumps metadata during training.
+Uncomment ```Lines 185-187, Line 194``` in train_puma.py (and comment ```Lines 188 and 195```) to dump related metadata during training.
 Launch tensorboard, choose run-step on left-pane, choose compute time or memory from the checklist.
 
 ### Authors
