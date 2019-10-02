@@ -38,15 +38,15 @@ For training with PANTHER operations use ```ifpanther=True```.
 
 ```python test.py --dataset=<my_path>```
 
-### Using tensorboard
+### Tensorboard (see results, training progress or debugging)
 
-Tensorboard helps in viasualization of several statistics collected during the training run (accuracy, loss etc).
+Tensorboard helps in visualization of several statistics collected during the training run (accuracy, loss etc).
 
-``` tensorboard --logdir=<my_name>:<my_logpath>
+```tensorboard --logdir=<my_name>:<my_logpath>``
 
 ### Measuring runtime and memory consumption of operations in tensorboard
 
-Uncomment ```Lines 185-187 in train_puma.pu``` - dumps metadata during training.
+Uncomment ```Lines 185-187 in train_puma.py``` - dumps metadata during training.
 Launch tensorboard, choose run-step on left-pane, choose compute time or memory from the checklist.
 
 ### Authors
