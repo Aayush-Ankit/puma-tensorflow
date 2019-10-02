@@ -27,7 +27,7 @@ flags.DEFINE_string('logdir', 'puma_vgg16', 'checkpoint directory where model an
 flags.DEFINE_boolean('restore', False, 'whether to restore training from checkpoint and log directory')
 flags.DEFINE_integer('quant_bits', 8, 'number of bits for weight/activation quantization')
 flags.DEFINE_integer('quant_delay', 101, 'when to start quantization during training')
-flags.DEFINE_string('dataset', "/local/scratch/a/aankit/tensorflow/approx_memristor/cifar100/dataset/", 'what is the path to dataset')
+flags.DEFINE_string('dataset', "/home/glau/puma/puma-tensorflow/cifar100/dataset/", 'what is the path to dataset')
 
 # flags to set non-ideality bounds
 flags.DEFINE_float('puma_sigma', 0.0, 'nonideality-write-noise-sigma')
