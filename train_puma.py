@@ -24,7 +24,8 @@ flags.DEFINE_integer('chpk_freq', 10, 'How often models are checkpointed during 
 flags.DEFINE_integer('batch_size', 64, 'batch size used in training')
 flags.DEFINE_float('lr', 0.0001, 'Initial learning rate')
 flags.DEFINE_string('logdir', 'puma_vgg16', 'checkpoint directory where model and logs will be saved')
-flags.DEFINE_boolean('restore', False, 'whether to restore training from checkpoint and log directory')
+flags.DEFINE_boolean('restore', True, 'whether to restore training from checkpoint and log directory')
+flags.DEFINE_integer('start_counter', 58000, 'start counter for restore training, used when chkpt has no counter')
 flags.DEFINE_integer('quant_bits', 8, 'number of bits for weight/activation quantization')
 flags.DEFINE_integer('quant_delay', 101, 'when to start quantization during training')
 flags.DEFINE_string('dataset', "/local/scratch/a/aankit/tensorflow/approx_memristor/cifar100/dataset/", 'what is the path to dataset')
@@ -34,9 +35,9 @@ flags.DEFINE_float('puma_sigma', 0.0, 'nonideality-write-noise-sigma')
 flags.DEFINE_float('puma_alpha', 0.0, 'nonideality-write-nonlinearity-alpha')
 
 # flag to set carry resolution frequency
-flags.DEFINE_integer('crs_freq', 1, 'How often carry resolution occurs during training - batch granularity')
+flags.DEFINE_integer('crs_freq', 4, 'How often carry resolution occurs during training - batch granularity')
 flags.DEFINE_integer('slice_bits', 2, 'number of bits per outer-product slice')
-flags.DEFINE_boolean('ifmixed', False, 'Chose whether to do mixed precision training or not')
+flags.DEFINE_boolean('ifmixed', True, 'Chose whether to do mixed precision training or not')
 flags.DEFINE_list('slice_bits_list', [6,6,6,6,4,4,4,4] , 'Specify slice_bits as comma-sepearted values (starting from LSB to MSB slice)')
 
 
@@ -129,7 +130,14 @@ def train():
                 print ('restoring train from: %s' % FLAGS.logdir)
                 saver.restore(sess, tf.train.latest_checkpoint("./"+FLAGS.logdir))
                 ckpt_name = tf.train.get_checkpoint_state(FLAGS.logdir).model_checkpoint_path # extract the latest checkpoint
-                counter = int(ckpt_name.split('-')[1]) # extract the counter from checkpoint
+                # patch for case where model gets saved naturally, not because it stopped due to interrupt
+                # counter = int(ckpt_name.split('-')[1]) # extract the counter from checkpoint
+                temp_l = ckpt_name.split('-')
+                if (len(temp_l) > 1):
+                    counter = int(ckpt_name.split('-')[1]) # extract the counter from checkpoint
+                else:
+                    print ("Restoring from counter:", FLAGS.start_counter)
+                    counter = FLAGS.start_counter
             else:
                 counter = 0
                 sess.run(tf.global_variables_initializer())
