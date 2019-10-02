@@ -51,7 +51,7 @@ Launch tensorboard, choose run-step on left-pane, choose compute time or memory 
 
 ### Authors
 
-Aayush Ankit (Purdue University)
+Aayush Ankit (Purdue University), Sai Rahul Chalamalasetti (Hewlett Packard Labs)
 
 
 
