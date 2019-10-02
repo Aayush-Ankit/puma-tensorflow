@@ -42,7 +42,7 @@ For training with PANTHER operations use ```ifpanther=True```.
 
 Tensorboard helps in visualization of several statistics collected during the training run (accuracy, loss etc).
 
-```tensorboard --logdir=<my_name>:<my_logpath>``
+```tensorboard --logdir=<my_name>:<my_logpath>```
 
 ### Measuring runtime and memory consumption of operations in tensorboard
 
