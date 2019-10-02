@@ -14,7 +14,7 @@ FLAGS = flags.FLAGS
 
 # define command line parameters
 flags.DEFINE_integer('batch_size', 64, 'batch size used in training')
-flags.DEFINE_string('log_dir', 'cifar100_test', 'checkpoint directory where model and logs will be saved')
+flags.DEFINE_string('logdir', 'cifar100_test', 'checkpoint directory where model and logs will be saved')
 flags.DEFINE_string('chpk_dir', 'cifar100_train', 'checkpoint directory where model and logs will be saved')
 flags.DEFINE_integer('quant_bits', 8, 'number of bits for weight/activation quantization')
 
@@ -23,7 +23,7 @@ flags.DEFINE_integer('quant_bits', 8, 'number of bits for weight/activation quan
 def test():
 
     # dataloader for testing accuracy computation  -dataloader for training data is embedded in model
-    loader = Loader(FLAGS.batch_size)
+    loader = Loader(FLAGS.batch_size, FLAGS.dataset)
     test_iterator = loader.get_dataset(train=False).get_next()
 
     # load model
@@ -44,14 +44,14 @@ def test():
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True,log_device_placement=False)) as sess:
 
         # setup logfile for this training session
-        test_writer = tf.summary.FileWriter(logdir="./"+FLAGS.log_dir, graph=sess.graph)
+        test_writer = tf.summary.FileWriter(logdir="./"+FLAGS.logdir, graph=sess.graph)
 
         assert (tf.gfile.Exists(FLAGS.chpk_dir)), 'Chpk file doesn\'t contain a trained model/checkpoint ...'
         saver.restore(sess, tf.train.latest_checkpoint("./"+FLAGS.chpk_dir))
 
         num_batch_per_epoch_test = math.ceil(loader.num_testing_examples / FLAGS.batch_size)
 
-        print ('Quantization bits: %d    Checkpoint: %s    Log:%s' % (FLAGS.quant_bits, FLAGS.chpk_dir, FLAGS.log_dir))
+        print ('Quantization bits: %d    Checkpoint: %s    Log:%s' % (FLAGS.quant_bits, FLAGS.chpk_dir, FLAGS.logdir))
         counter = 0
         true_count = 0
 
