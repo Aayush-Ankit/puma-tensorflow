@@ -1,2 +1,5 @@
 .*.sw*
 __pycache__
+result-plots/
+extracted-simulation-data/
+test/

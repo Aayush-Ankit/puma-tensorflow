@@ -5,7 +5,7 @@ import math
 
 # Specify the model and dataloader
 from data_loader import Loader
-from vgg16 import Model
+from vgg16_puma import Model
 
 # add flags for user defined parameters
 from absl import flags
@@ -14,8 +14,11 @@ FLAGS = flags.FLAGS
 
 # define command line parameters
 flags.DEFINE_integer('batch_size', 64, 'batch size used in training')
-flags.DEFINE_string('logdir', 'cifar100_test', 'checkpoint directory where model and logs will be saved')
-flags.DEFINE_string('chpk_dir', 'cifar100_train', 'checkpoint directory where model and logs will be saved')
+flags.DEFINE_string('logdir', 'test/sample_test_run', 'log directory where testing results will be saved')
+flags.DEFINE_string('chpk_dir', 'test/sample_train_run', 'checkpoint directory where trained model will be read from')
+flags.DEFINE_string('dataset', "/home/glau/puma/puma-tensorflow/cifar100/dataset/", 'what is the path to dataset')
+
+# flags for quantization (homogenous for the entire model) - NOTE: quantization support is not present in this script
 flags.DEFINE_integer('quant_bits', 8, 'number of bits for weight/activation quantization')
 
 
@@ -31,9 +34,11 @@ def test():
     logits = model.logits
     labels = model.y_placeholder
 
-    # create testing op - add fake nodes to simulate quantization in inference
-    tf.contrib.quantize.experimental_create_eval_graph(weight_bits=FLAGS.quant_bits,
-                                                       activation_bits=FLAGS.quant_bits)
+    ## create testing op - add fake nodes to simulate quantization in inference
+    # NOTE: keep below commented until quantization support is not enabled for training
+    #print ('Quantization bits: %d    delay: %d ' % (FLAGS.quant_bits, FLAGS.quant_delay))
+    #tf.contrib.quantize.experimental_create_eval_graph(weight_bits=FLAGS.quant_bits, activation_bits=FLAGS.quant_bits)
+
     outputs = tf.nn.softmax(logits)
     test_op = tf.nn.in_top_k(outputs, labels, 1)
     acc_op = tf.reduce_mean(tf.cast(test_op, tf.float32))
@@ -43,7 +48,7 @@ def test():
 
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True,log_device_placement=False)) as sess:
 
-        # setup logfile for this training session
+        # setup logfile for this testing session
         test_writer = tf.summary.FileWriter(logdir="./"+FLAGS.logdir, graph=sess.graph)
 
         assert (tf.gfile.Exists(FLAGS.chpk_dir)), 'Chpk file doesn\'t contain a trained model/checkpoint ...'
@@ -51,7 +56,6 @@ def test():
 
         num_batch_per_epoch_test = math.ceil(loader.num_testing_examples / FLAGS.batch_size)
 
-        print ('Quantization bits: %d    Checkpoint: %s    Log:%s' % (FLAGS.quant_bits, FLAGS.chpk_dir, FLAGS.logdir))
         counter = 0
         true_count = 0
 

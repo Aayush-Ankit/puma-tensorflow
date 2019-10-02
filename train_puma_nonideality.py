@@ -1,3 +1,5 @@
+# API to train
+
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
@@ -60,7 +62,6 @@ def train():
     # If not using puma-outerproduct; directly use nonideality class without going through outer_product class
     # outer_product is built on example-wise gradients and is slow [To Try for speedup - see Goodfeli blog - https://github.com/tensorflow/tensorflow/issues/4897]
     nonideality = puma.nonideality(sigma=FLAGS.puma_sigma, alpha=FLAGS.puma_alpha)
-    #puma_op = puma.outer_product(var_list=var_list, sigma=FLAGS.puma_sigma, alpha=FLAGS.puma_alpha, slice_bits=FLAGS.slice_bits)
 
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 
@@ -76,10 +77,7 @@ def train():
 
         grad = opt.compute_gradients(loss)
         grad_n = nonideality.apply(grad)
-        #grad_n = puma_op.apply_batch(grad)
-        #train_op = opt.apply_gradients(zip(grad_n[0], var_list)) # train with non-ideality and sliced_outer_product
         train_op = opt.apply_gradients(grad_n[0]) # train with non-ideality only
-        #train_op = opt.apply_gradients(grad) # Ideal training
 
     # create ops for validation and training accuracy
     outputs = tf.nn.softmax(logits)
@@ -90,9 +88,6 @@ def train():
     # create ops for top-5 accuracy
     equality5 = tf.nn.in_top_k(outputs, labels, 5)
     accuracy5 = tf.reduce_mean(tf.cast(equality5, tf.float32))
-
-    # puma crs_sync
-    #crs_op = puma_op.crs_sync(var_list)
 
     tf.summary.scalar("Loss", loss)
     tf.summary.scalar("Training accuracy - Top-1", accuracy)

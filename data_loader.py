@@ -11,7 +11,7 @@ class Loader():
     def __init__(self,batch_size=64, path=None):
         assert (path != None), "Provide the path to dataset"
         #dataset_path = "/local/scratch/a/aankit/tensorflow/approx_memristor/cifar100/dataset/"
-        dataset_path = path
+        dataset_path = path + "/" # add forward slash (for redundancy)
         # Downloads the CIFAR 100 dataset and saves it as a TFRecords File if not available
         self.filenames = [dataset_path+"train.tfrecords",dataset_path+"test.tfrecords"]
         self.batch_size = batch_size
@@ -24,6 +24,8 @@ class Loader():
             if not os.path.isfile(file):
                 found  = False
                 print("TFRecords not found for file: " + file)
+        assert (found == True)
+        '''
         if not found:
             (train_x,train_y), (test_x,test_y) = tf.keras.datasets.cifar100.load_data(label_mode='fine')
 
@@ -39,6 +41,7 @@ class Loader():
 
             self.create_tf_record(examples=train_x,labels=train_y,path="train.tfrecords")
             self.create_tf_record(examples=test_x,labels=test_y,path="test.tfrecords")
+        '''
 
 
     def get_dataset(self,train=True):
